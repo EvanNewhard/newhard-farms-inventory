@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Newhard Farms Inventory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <path d="M14 3C10 3 6 7 6 12c0 3.5 2 6.5 5 8v3h6v-3c3-1.5 5-4.5 5-8 0-5-4-9-8-9z" fill="#4a7c4e" opacity="0.9"/>
+          <rect x="11" y="23" width="6" height="2" rx="1" fill="#4a7c4e"/>
+        </svg>
+        <span class="brand-name">Newhard Farms Inventory</span>
+      </div>
+      <div class="header-actions" id="header-actions" style="display:none;">
+        <span class="last-updated" id="last-updated"></span>
+        <button class="btn btn-ghost" onclick="refreshData()">↻ Refresh</button>
+        <button class="btn btn-ghost btn-small" onclick="showSettings()">Settings</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Setup / Login -->
+  <main id="setup-screen" class="screen">
+    <div class="setup-card">
+      <h1 class="setup-title">Connect your Clover account</h1>
+      <p class="setup-subtitle">Your credentials are saved only in this browser and sent directly to Clover — never stored anywhere else.</p>
+
+      <div class="field-group">
+        <label class="field-label" for="merchant-id">Merchant ID</label>
+        <input class="field-input" id="merchant-id" type="text" placeholder="e.g. A1B2C3D4E5F6G" autocomplete="off" spellcheck="false" />
+        <p class="field-hint">Find this in your Clover Dashboard URL: dashboard.clover.com/home/m/<strong>YOUR-ID-HERE</strong></p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="api-token">API token</label>
+        <input class="field-input" id="api-token" type="password" placeholder="Paste your Clover API token" autocomplete="off" />
+        <p class="field-hint">Generate this at <a href="https://developer.clover.com" target="_blank" rel="noopener">developer.clover.com</a></p>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group field-group-inline">
+          <label class="field-label" for="threshold">Low stock alert threshold</label>
+          <input class="field-input field-input-sm" id="threshold" type="number" value="5" min="1" />
+          <p class="field-hint">Alert when stock is at or below this number</p>
+        </div>
+      </div>
+
+      <div class="field-group checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="remember-me" checked />
+          <span>Remember my credentials on this device</span>
+        </label>
+      </div>
+
+      <button class="btn btn-primary" onclick="connect()">Connect and load inventory</button>
+      <p class="error-msg" id="setup-error"></p>
+    </div>
+  </main>
+
+  <!-- Loading -->
+  <main id="loading-screen" class="screen" style="display:none;">
+    <div class="loading-inner">
+      <div class="spinner"></div>
+      <p class="loading-text">Loading your inventory from Clover...</p>
+    </div>
+  </main>
+
+  <!-- Dashboard -->
+  <main id="dashboard-screen" class="screen" style="display:none;">
+    <div class="dash-container">
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Total items</span>
+          <span class="stat-value" id="stat-total">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Tracking stock</span>
+          <span class="stat-value" id="stat-tracked">—</span>
+        </div>
+        <div class="stat-card stat-warning">
+          <span class="stat-label">Low stock</span>
+          <span class="stat-value" id="stat-low">—</span>
+        </div>
+        <div class="stat-card stat-danger">
+          <span class="stat-label">Out of stock</span>
+          <span class="stat-value" id="stat-out">—</span>
+        </div>
+        <div class="stat-card stat-success">
+          <span class="stat-label">Well stocked</span>
+          <span class="stat-value" id="stat-ok">—</span>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="filter-tabs">
+          <button class="filter-tab active" onclick="setFilter('all', this)">All items</button>
+          <button class="filter-tab" onclick="setFilter('out', this)">Out of stock</button>
+          <button class="filter-tab" onclick="setFilter('low', this)">Low stock</button>
+          <button class="filter-tab" onclick="setFilter('ok', this)">In stock</button>
+          <button class="filter-tab" onclick="setFilter('untracked', this)">Not tracked</button>
+        </div>
+        <div class="search-wrap">
+          <input class="search-input" id="search-input" type="search" placeholder="Search items..." oninput="renderTable()" />
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th onclick="sortBy('name')">Item <span class="sort-icon" id="sort-name">↕</span></th>
+              <th class="col-stock" onclick="sortBy('stock')">In stock <span class="sort-icon" id="sort-stock">↓</span></th>
+              <th class="col-price" onclick="sortBy('price')">Price <span class="sort-icon" id="sort-price">↕</span></th>
+              <th class="col-status">Status</th>
+              <th class="col-reorder">Suggested reorder</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-body"></tbody>
+        </table>
+        <p class="empty-state" id="empty-state" style="display:none;">No items match this filter.</p>
+      </div>
+
+      <div class="table-footer">
+        <p class="table-note">Items showing "Not tracked" have stock tracking disabled in Clover. To enable: Clover Dashboard → Inventory → click the item → turn on Track Stock and enter a starting quantity.</p>
+        <button class="btn btn-outline" onclick="exportCSV()">Export to CSV</button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Settings modal -->
+  <div class="modal-overlay" id="settings-modal" style="display:none;" onclick="closeSettingsIfOutside(event)">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Settings</h2>
+        <button class="modal-close" onclick="closeSettings()" aria-label="Close">✕</button>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="s-merchant-id">Merchant ID</label>
+        <input class="field-input" id="s-merchant-id" type="text" />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="s-api-token">API token</label>
+        <input class="field-input" id="s-api-token" type="password" />
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="s-threshold">Low stock threshold</label>
+        <input class="field-input field-input-sm" id="s-threshold" type="number" min="1" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="saveSettings()">Save and reload</button>
+        <button class="btn btn-ghost btn-danger" onclick="clearAll()">Clear saved credentials</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

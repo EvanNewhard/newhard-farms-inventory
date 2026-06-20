@@ -1,0 +1,8 @@
+{
+  "name": "newhard-farms-inventory",
+  "version": "1.0.0",
+  "description": "Newhard Farms Inventory — Clover integration",
+  "engines": {
+    "node": ">=18"
+  }
+}
