@@ -55,7 +55,7 @@ async function fetchInventory(mid, token, threshold) {
   showScreen('loading-screen');
 
   try {
-    const resp = await fetch('https://timely-muffin-244f8c.netlify.app/.netlify/functions/clover', {
+    const resp = await fetch('https://meek-twilight-e209c1.netlify.app/.netlify/functions/clover', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ merchantId: mid, token: token })
